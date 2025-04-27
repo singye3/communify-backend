@@ -1,0 +1,3 @@
+*.py text eol=lf
+*.txt text eol=crlf
+*.sh text eol=lf

@@ -1,0 +1,106 @@
+# --- Python ---
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+# Usually these files are created by PyInstaller freezing application
+# into executable in root folder
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
+
+# --- Virtual Environments ---
+# Include the one you created and other common names
+myenv/
+venv/
+.venv/
+env/
+.env/       # If you name your venv folder .env
+ENV/
+env.bak/
+venv.bak/
+
+# --- Environment Variables ---
+# Ignore the file with secrets, but not the example file
+.env
+.env.*
+!.env.example # Make sure the example file is NOT ignored
+
+# --- Databases ---
+# Instance directory for Flask, if used
+# instance/
+# SQLite databases
+*.sqlite3
+*.db
+*.db3
+
+# --- IDEs / Editors ---
+# VS Code
+.vscode/
+# PyCharm
+.idea/
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+# Vim
+*.swp
+*~
+# Emacs
+#*#
+.#*
+
+# --- OS Files ---
+# MacOS
+.DS_Store
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Logs ---
+*.log
+logs/
+*.log.*

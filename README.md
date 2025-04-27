@@ -15,6 +15,7 @@ This is the FastAPI backend server for the Communify AAC application. It handles
 *   **Server:** [Uvicorn](https://www.uvicorn.org/)
 
 ## Project Structure
+```
 communify-backend/
 ├── app/ # Main application source code
 │ ├── api/ # API specific code
@@ -47,7 +48,7 @@ communify-backend/
 ├── .gitignore # Git ignore rules
 ├── requirements.txt # Python dependencies
 └── README.md # This file
-
+```
 
 ## Setup and Installation
 

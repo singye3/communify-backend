@@ -1,51 +1,52 @@
 # app/main.py
+import logging
 from fastapi import FastAPI, Depends
-# --- Import CORSMiddleware ---
 from fastapi.middleware.cors import CORSMiddleware
-# ----------------------------
-from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from contextlib import asynccontextmanager
+
+from app.core.logging_config import setup_logging
+setup_logging()
+# ---------------------------
 
 from app.core.config import settings
 from app.db.database import init_db
-from app.api.v1.api import api_router
-from app.api.deps import oauth2_scheme # Keep import for dependencies
+from app.api.v1.api import api_router, tags_metadata
 
-# --- Lifespan Context Manager (Keep as before) ---
+# Get a logger for this module AFTER setup
+logger = logging.getLogger(__name__) 
+
+# --- Lifespan Context Manager ---
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("--- Application Starting Up ---")
+async def lifespan(app_instance: FastAPI): # Renamed app to app_instance to avoid conflict
+    logger.info("Application starting up...") # Use logger
     await init_db()
-    print("--- Database Initialized ---")
+    logger.info("Database initialized.")
     yield
-    print("--- Application Shutting Down ---")
+    logger.info("Application shutting down...")
 
 # --- Define Security Schemes for OpenAPI Docs ---
-bearer_scheme = HTTPBearer(scheme_name="BearerAuth", description="Enter JWT token prefixed with 'Bearer '")
+bearer_scheme_docs = HTTPBearer(scheme_name="BearerAuth", description="Enter JWT token prefixed with 'Bearer '", auto_error=False)
 
-# --- Create FastAPI App with refined OpenAPI components ---
+# --- Create FastAPI App ---
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
-    openapi_extras={
+    openapi_tags=tags_metadata,
+    openapi_extra={
         "components": {
             "securitySchemes": {
                 "BearerAuth": {
-                    "type": "http",
-                    "scheme": "bearer",
-                    "bearerFormat": "JWT",
-                    "description": "Enter JWT token (e.g., 'Bearer eyJ...') "
-                },
+                    "type": "http", "scheme": "bearer", "bearerFormat": "JWT",
+                    "description": "Enter JWT token (e.g., 'Bearer eyJ...')"
+                }
             }
-        },
-        # Optional: Apply globally
-        # "security": [{"BearerAuth": []}],
+        }
     }
 )
 
-# --- Set all CORS enabled origins ---
-# This block now has CORSMiddleware defined
+# --- CORS Middleware ---
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
@@ -54,19 +55,13 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-# -----------------------------------
 
-# --- Include API Routers (Keep as before) ---
+# --- Include API Routers ---
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# --- Root Endpoint (Keep as before) ---
+# --- Root Endpoint ---
 @app.get("/", tags=["Root"])
 async def read_root():
+    """Provides a simple welcome message for the API root."""
+    logger.info("Root endpoint requested.") # Example log
     return {"message": f"Welcome to {settings.PROJECT_NAME} API"}
-
-# --- Example Protected Route (Keep as before) ---
-@app.get("/test-auth", tags=["Test Auth"])
-async def test_authorization(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
-     """Requires authorization via the 'Authorize' button using Bearer token."""
-     return {"message": "Authorization successful via Bearer scheme!", "scheme": credentials.scheme, "token_prefix": credentials.credentials[:10] + "..."}
-# -----------------------------------------------------------------

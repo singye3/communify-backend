@@ -12,20 +12,27 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
     """
     Get current logged-in user's details.
     """
-    user_dict = current_user.model_dump() # Use model_dump without alias initially
+    # --- FIX: Access user.id directly ---
+    # 1. Get the raw dictionary for other fields
+    user_dict = current_user.model_dump()
+
+    # 2. Create the dictionary for UserRead
+    if not current_user.id:
+         # Should not happen if user was fetched correctly, but good practice
+         raise HTTPException(status_code=500, detail="User ID missing after fetch.")
+
     user_read_data = {
-        "id": str(user_dict['_id']), # Convert ObjectId to string for 'id' field
+        "id": str(current_user.id), # <-- Use the model's 'id' attribute
         "email": user_dict['email'],
         "name": user_dict['name'],
         "avatar_uri": user_dict.get('avatar_uri'),
-        "is_active": user_dict.get('is_active', True), # Handle potential missing value
-        "user_type": user_dict['user_type'], # Include user_type (ensure it's in UserRead schema)
+        "is_active": user_dict.get('is_active', True),
+        "user_type": user_dict['user_type'],
         "created_at": user_dict['created_at'],
         "updated_at": user_dict['updated_at']
     }
-    # ---------------------------------------------
+    # -----------------------------------
 
-    # Pass the prepared dictionary to the response model
     return UserRead(**user_read_data)
 
 # --- OPTIONAL: Add Update Endpoint ---

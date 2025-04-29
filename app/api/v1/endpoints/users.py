@@ -12,8 +12,21 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
     """
     Get current logged-in user's details.
     """
-    # model_dump necessary for alias (_id -> id) mapping in response model
-    return UserRead(**current_user.model_dump(by_alias=True))
+    user_dict = current_user.model_dump() # Use model_dump without alias initially
+    user_read_data = {
+        "id": str(user_dict['_id']), # Convert ObjectId to string for 'id' field
+        "email": user_dict['email'],
+        "name": user_dict['name'],
+        "avatar_uri": user_dict.get('avatar_uri'),
+        "is_active": user_dict.get('is_active', True), # Handle potential missing value
+        "user_type": user_dict['user_type'], # Include user_type (ensure it's in UserRead schema)
+        "created_at": user_dict['created_at'],
+        "updated_at": user_dict['updated_at']
+    }
+    # ---------------------------------------------
+
+    # Pass the prepared dictionary to the response model
+    return UserRead(**user_read_data)
 
 # --- OPTIONAL: Add Update Endpoint ---
 # @router.patch("/me", response_model=UserRead)

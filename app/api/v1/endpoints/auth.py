@@ -48,11 +48,21 @@ async def register_user(user_in: UserCreate):
         name=user_in.name,
         hashed_password=hashed_password
     )
-    await user.insert()
+    inserted_user = await user.insert()
+    if not inserted_user or not inserted_user.id:
+         raise HTTPException(status_code=500, detail="Failed to retrieve user ID after insertion.")
 
-    # Convert _id to string for Pydantic validation
-    user_data = user.model_dump(by_alias=True)
-    if user.id: # Should always exist after insert
-       user_data['id'] = str(user.id)
 
-    return UserRead(**user_data)
+    user_read_data = {
+        "id": str(inserted_user.id), 
+        "email": inserted_user.email,
+        "name": inserted_user.name,
+        "avatar_uri": inserted_user.avatar_uri,
+        "is_active": inserted_user.is_active,
+        "created_at": inserted_user.created_at,
+        "updated_at": inserted_user.updated_at
+    }
+    # ------------------------------------------
+
+    # Pass the prepared dictionary to UserRead
+    return UserRead(**user_read_data)

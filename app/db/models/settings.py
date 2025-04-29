@@ -1,18 +1,14 @@
 # app/db/models/settings.py
 from typing import Optional, List, Annotated, Any
-from datetime import datetime, time # Import time for validation
+from datetime import datetime, time
 from beanie import Document, Link, Indexed
 from pydantic import Field, EmailStr, field_validator, model_validator, ValidationError
-
-# Import Enums directly from the enums file
 from .enums import AsdLevel, DayOfWeek
 
-# Import User for forward reference resolution
-# (Keep the import after the class definition)
 
 
 class ParentalSettings(Document):
-    user: Annotated[Link["User"], Indexed(unique=True)] # type: ignore
+    user: Annotated[Link["User"], Indexed(unique=True)] 
     block_violence: bool = Field(default=False)
     block_inappropriate: bool = Field(default=False)
     daily_limit_hours: Optional[str] = Field(default=None, pattern=r"^(?:[0-9]|1[0-9]|2[0-4])?$")
@@ -22,7 +18,7 @@ class ParentalSettings(Document):
     downtime_start: str = Field(default="21:00", pattern=r"^[0-2][0-9]:[0-5][0-9]$")
     downtime_end: str = Field(default="07:00", pattern=r"^[0-2][0-9]:[0-5][0-9]$")
     require_passcode: bool = Field(default=False)
-    notify_emails: List[EmailStr] = Field(default_factory=list) # type: ignore
+    notify_emails: List[EmailStr] = Field(default_factory=list) 
     data_sharing_preference: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)

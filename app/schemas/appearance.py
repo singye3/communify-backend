@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, EmailStr, field_validator, conint # Impor
 from typing import Optional, List, Annotated, Literal # Import Annotated and Literal
 from app.db.models.enums import GridLayoutTypeEnum, TextSizeTypeEnum, ContrastModeTypeEnum
 
+
 # --- Base Schema ---
 # Defines all possible fields related to appearance settings.
 # Used as a base for Update (all optional) and Read (adds id).
@@ -74,7 +75,7 @@ class AppearanceSettingsBase(BaseModel):
             "example": {
                 "symbol_grid_layout": "standard",
                 "font_size": "medium",
-                "contrast_mode": "default", # Or use "theme": "default" if using alias
+                "theme": "default", # Example using alias 'theme'
                 "brightness": 80,
                 "tts_pitch": 0.5,
                 "tts_speed": 0.6,
@@ -105,7 +106,7 @@ class AppearanceSettingsRead(AppearanceSettingsBase):
                 "id": "6811a5b...",
                 "symbol_grid_layout": "standard",
                 "font_size": "medium",
-                "contrast_mode": "default",
+                "contrast_mode": "default", # Output uses the actual field name
                 "brightness": 80,
                 "tts_pitch": 0.5,
                 "tts_speed": 0.6,
@@ -115,6 +116,7 @@ class AppearanceSettingsRead(AppearanceSettingsBase):
                 "tts_speak_punctuation": False,
                 "selection_mode": "drag",
                 "dark_mode_enabled": False,
+                # "user_id": "user123" # If added
             }
         }
 
@@ -132,6 +134,6 @@ class AppearanceSettingsUpdate(AppearanceSettingsBase):
             "example": {
                 "font_size": "large",
                 "tts_speed": 0.7,
-                "contrast_mode": "high-contrast-dark"
+                "theme": "high-contrast-dark" # Example using alias for input
             }
         }

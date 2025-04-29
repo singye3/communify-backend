@@ -1,5 +1,5 @@
 # app/schemas/token.py
-from pydantic import BaseModel, Field # Import Field for examples/descriptions
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 class Token(BaseModel):
@@ -8,7 +8,7 @@ class Token(BaseModel):
     Complies with OAuth2 standards.
     """
     access_token: str = Field(
-        ..., 
+        ...,
         description="The JWT access token string.",
         examples=["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDU5..."]
     )
@@ -31,7 +31,8 @@ class TokenData(BaseModel):
     Schema representing the data encoded within the JWT access token's payload.
     Currently only includes the user's email as the subject ('sub').
     """
-    email: Optional[str] = Field(
+    # Changed to Optional[EmailStr] for better type hint, depends on whether 'sub' is guaranteed
+    email: Optional[EmailStr] = Field( # Or str if email format isn't strictly guaranteed in token
         default=None,
         description="The email address of the user, extracted from the token's 'sub' claim.",
         examples=["user@example.com"]

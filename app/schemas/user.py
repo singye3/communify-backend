@@ -12,7 +12,7 @@ class UserCreate(BaseModel):
     password: str = Field(
         ...,
         min_length=8,
-        description="User's password (must be at least 8 characters).",
+        description="User's password (must be at least 8 characters). Consider adding complexity requirements.",
         examples=["ValidPassword123"]
     )
     name: str = Field(..., min_length=1, max_length=100, description="User's display name.", examples=["New User"])
@@ -26,10 +26,6 @@ class UserCreate(BaseModel):
             }
         }
 
-# --- Schema for Creating an Admin User (Admin Endpoint) ---
-class AdminUserCreate(UserCreate):
-     """Schema for data required to create an admin user (used by admin endpoint)."""
-     pass
 
 # --- Schema for Updating User Profile (User's Own Profile) ---
 class UserUpdate(BaseModel):
@@ -43,9 +39,12 @@ class UserUpdate(BaseModel):
     )
     avatar_uri: Optional[str] = Field(
         default=None,
+        # Consider adding pattern validation if URIs should follow a specific format
         description="New URI for the user's avatar image.",
         examples=["https://example.com/new_avatar.png"]
     )
+    # NOTE: Users typically cannot change their own email, password (use separate endpoint),
+    # is_active, or user_type via this profile update schema.
 
     class Config:
         json_schema_extra = {
@@ -66,10 +65,11 @@ class UserRead(BaseModel):
     user_type: UserType = Field(..., description="The role/type of the user (e.g., parent, admin).", examples=["parent"])
     created_at: datetime = Field(..., description="Timestamp when the user account was created.")
     updated_at: datetime = Field(..., description="Timestamp when the user account was last updated.")
+    # Add other non-sensitive fields if necessary (e.g., age, gender if appropriate for context)
 
     class Config:
         from_attributes = True
-        populate_by_name = True 
+        populate_by_name = True # Important for mapping '_id' from DB to 'id'
         json_schema_extra = {
              "example": {
                 "id": "6810ed2f931f6f857012351d",
@@ -78,7 +78,39 @@ class UserRead(BaseModel):
                 "avatar_uri": None,
                 "is_active": True,
                 "user_type": "parent",
-                "created_at": "2025-04-29T21:15:59.314551Z",
-                "updated_at": "2025-04-29T21:15:59.314551Z"
+                "created_at": "2025-04-29T21:15:59.314Z", # Use ISO 8601 format example
+                "updated_at": "2025-04-29T21:15:59.314Z"  # Use ISO 8601 format example
              }
+        }
+
+# --- Schema for Updating User Password ---
+class UserPasswordUpdate(BaseModel):
+    """Schema for updating the current user's password."""
+    current_password: str = Field(
+        ...,
+        description="The user's current password (for verification).",
+        examples=["MyCurrentPassword123"]
+    )
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        description="The desired new password (must be at least 8 characters).",
+        examples=["MyNewSecurePassword456"]
+    )
+    # Optional: Add a confirmation field if needed, though often handled frontend-only
+    # confirm_new_password: str = Field(...)
+
+    # Optional: Add a model validator to ensure new != current, if desired
+    # @model_validator(mode='after')
+    # def check_passwords_not_same(self):
+    #     if self.current_password == self.new_password:
+    #         raise ValueError("New password cannot be the same as the current password.")
+    #     return self
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "current_password": "oldPassword123",
+                "new_password": "newStrongPassword456"
+            }
         }

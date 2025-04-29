@@ -12,13 +12,8 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
     """
     Get current logged-in user's details.
     """
-    # --- FIX: Access user.id directly ---
-    # 1. Get the raw dictionary for other fields
     user_dict = current_user.model_dump()
-
-    # 2. Create the dictionary for UserRead
     if not current_user.id:
-         # Should not happen if user was fetched correctly, but good practice
          raise HTTPException(status_code=500, detail="User ID missing after fetch.")
 
     user_read_data = {

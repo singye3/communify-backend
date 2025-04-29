@@ -1,10 +1,38 @@
 # app/schemas/token.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field # Import Field for examples/descriptions
 from typing import Optional
 
 class Token(BaseModel):
-    access_token: str
-    token_type: str
+    """
+    Schema representing the access token response provided upon successful login.
+    Complies with OAuth2 standards.
+    """
+    access_token: str = Field(
+        ..., 
+        description="The JWT access token string.",
+        examples=["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDU5..."]
+    )
+    token_type: str = Field(
+        default="bearer",
+        description="The type of token issued (always 'bearer').",
+        examples=["bearer"]
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDU5NDc5MDYsInN1YiI6ImFkbWluQGNvbW11bmlmeS5hcHAifQ.AL0fhc1c2vuO3f8WSMQBdDl5fzdDoLVK9aOSeJfRwB0",
+                "token_type": "bearer"
+            }
+        }
 
 class TokenData(BaseModel):
-    email: Optional[str] = None
+    """
+    Schema representing the data encoded within the JWT access token's payload.
+    Currently only includes the user's email as the subject ('sub').
+    """
+    email: Optional[str] = Field(
+        default=None,
+        description="The email address of the user, extracted from the token's 'sub' claim.",
+        examples=["user@example.com"]
+    )

@@ -52,11 +52,25 @@ async def read_parental_settings(
              raise HTTPException(status_code=500, detail="Error retrieving settings ID.")
 
         settings_data = settings.model_dump(by_alias=True) # Use by_alias if needed
-        settings_data['id'] = str(settings.id)
+
+        # --- FIX APPLIED HERE ---
+        # Ensure the '_id' key (the alias for 'id') holds the string representation
+        if '_id' in settings_data and settings.id:
+             settings_data['_id'] = str(settings.id)
+        elif settings.id: # Fallback just in case model_dump didn't include it but id exists
+             settings_data['_id'] = str(settings.id)
+        # ------------------------
+
         logger.debug(f"Parental settings retrieved successfully for user: {current_user.email}")
+        # Pydantic will now correctly use the string value associated with '_id' to populate the 'id' field.
         return ParentalSettingsRead(**settings_data)
 
     except Exception as e:
+        # Catch potential Pydantic validation error during ParentalSettingsRead instantiation
+        if isinstance(e, ValidationError):
+             logger.warning(f"Validation error creating ParentalSettingsRead response for user {current_user.email}: {e.errors()}")
+             # Depending on policy, you might still want to return 500 or a modified response
+             raise HTTPException(status_code=500, detail="Error processing retrieved settings.")
         logger.exception(f"Error fetching parental settings for user {current_user.email}:")
         raise HTTPException(status_code=500, detail="Could not retrieve parental settings.")
 
@@ -91,12 +105,24 @@ async def update_parental_settings(
             # Return current settings if they exist, otherwise return defaults
             if existing_settings:
                  settings_data = existing_settings.model_dump(by_alias=True)
-                 if existing_settings.id: settings_data['id'] = str(existing_settings.id)
+                 # --- FIX APPLIED HERE (within no-update path) ---
+                 if '_id' in settings_data and existing_settings.id:
+                     settings_data['_id'] = str(existing_settings.id)
+                 elif existing_settings.id:
+                      settings_data['_id'] = str(existing_settings.id)
+                 # -----------------------------------------------
+                 if not existing_settings.id:
+                      # Handle case where existing settings somehow lack ID, return default-like structure
+                      logger.error(f"Existing parental settings for user {current_user.email} lack ID. Returning defaults.")
+                      default_resp_data = ParentalSettingsBase().model_dump(by_alias=True)
+                      return ParentalSettingsRead(id="error_missing_id", **default_resp_data)
                  return ParentalSettingsRead(**settings_data)
+
             else:
                 default_data = ParentalSettingsBase().model_dump(by_alias=True)
                 return ParentalSettingsRead(id="defaults_returned", **default_data)
 
+        settings_to_return = None
         if existing_settings:
             logger.debug(f"Found existing parental settings for user {current_user.email}. Updating...")
             # Apply updates using Beanie's update method with $set
@@ -111,7 +137,12 @@ async def update_parental_settings(
         else:
             logger.info(f"No existing parental settings found for user {current_user.email}. Creating new document...")
             # Create new settings: merge incoming data with base defaults for a complete object
-            new_settings_data = ParentalSettingsBase(**update_data).model_dump(by_alias=True)
+            # Important: Create a BASE model first to ensure defaults are applied before overlaying update_data
+            base_defaults = ParentalSettingsBase().model_dump(by_alias=True)
+            # Merge update_data onto base_defaults. update_data takes precedence.
+            new_settings_data = {**base_defaults, **update_data}
+            # Note: If Beanie/Pydantic handles default merging automatically on create, this explicit merge might be simplified.
+            # Check Beanie's behavior for creating documents from partial data.
             new_settings = ParentalSettings(user=current_user, **new_settings_data) # type: ignore
             # insert() will run validators/hooks
             await new_settings.insert()
@@ -124,7 +155,13 @@ async def update_parental_settings(
 
         # Prepare and return response data
         response_data = settings_to_return.model_dump(by_alias=True)
-        response_data['id'] = str(settings_to_return.id)
+        # --- FIX APPLIED HERE ---
+        # Ensure the '_id' key holds the string representation
+        if '_id' in response_data and settings_to_return.id:
+             response_data['_id'] = str(settings_to_return.id)
+        elif settings_to_return.id: # Fallback
+              response_data['_id'] = str(settings_to_return.id)
+        # ------------------------
         return ParentalSettingsRead(**response_data)
 
     except ValidationError as e: # Catch Pydantic validation errors during init or save
@@ -167,11 +204,23 @@ async def read_appearance_settings(
              raise HTTPException(status_code=500, detail="Error retrieving settings ID.")
 
         settings_data = settings.model_dump(by_alias=True) # Use by_alias for consistency ('theme')
-        settings_data['id'] = str(settings.id)
+
+        # --- FIX APPLIED HERE ---
+        # Ensure the '_id' key holds the string representation
+        if '_id' in settings_data and settings.id:
+             settings_data['_id'] = str(settings.id)
+        elif settings.id: # Fallback
+             settings_data['_id'] = str(settings.id)
+        # ------------------------
+
         logger.debug(f"Appearance settings retrieved successfully for user: {current_user.email}")
         return AppearanceSettingsRead(**settings_data)
 
     except Exception as e:
+         # Catch potential Pydantic validation error during AppearanceSettingsRead instantiation
+        if isinstance(e, ValidationError):
+             logger.warning(f"Validation error creating AppearanceSettingsRead response for user {current_user.email}: {e.errors()}")
+             raise HTTPException(status_code=500, detail="Error processing retrieved settings.")
         logger.exception(f"Error fetching appearance settings for user {current_user.email}:")
         raise HTTPException(status_code=500, detail="Could not retrieve appearance settings.")
 
@@ -204,12 +253,22 @@ async def update_appearance_settings(
             logger.warning(f"No valid update data provided for appearance settings by user {current_user.email}. Returning current state.")
             if existing_settings:
                  settings_data = existing_settings.model_dump(by_alias=True)
-                 if existing_settings.id: settings_data['id'] = str(existing_settings.id)
+                 # --- FIX APPLIED HERE (within no-update path) ---
+                 if '_id' in settings_data and existing_settings.id:
+                     settings_data['_id'] = str(existing_settings.id)
+                 elif existing_settings.id:
+                      settings_data['_id'] = str(existing_settings.id)
+                 # -----------------------------------------------
+                 if not existing_settings.id:
+                      logger.error(f"Existing appearance settings for user {current_user.email} lack ID. Returning defaults.")
+                      default_resp_data = AppearanceSettingsBase().model_dump(by_alias=True)
+                      return AppearanceSettingsRead(id="error_missing_id", **default_resp_data)
                  return AppearanceSettingsRead(**settings_data)
             else:
                 default_data = AppearanceSettingsBase().model_dump(by_alias=True)
                 return AppearanceSettingsRead(id="defaults_returned", **default_data)
 
+        settings_to_return = None
         if existing_settings:
             logger.debug(f"Found existing appearance settings for user {current_user.email}. Updating...")
             await existing_settings.update({"$set": update_data})
@@ -222,7 +281,8 @@ async def update_appearance_settings(
         else:
             logger.info(f"No existing appearance settings found for user {current_user.email}. Creating new document...")
             # Create new: merge input with base defaults
-            new_settings_data = AppearanceSettingsBase(**update_data).model_dump(by_alias=True)
+            base_defaults = AppearanceSettingsBase().model_dump(by_alias=True)
+            new_settings_data = {**base_defaults, **update_data}
             new_settings = AppearanceSettings(user=current_user, **new_settings_data) # type: ignore
             await new_settings.insert()
             settings_to_return = new_settings
@@ -234,7 +294,13 @@ async def update_appearance_settings(
 
         # Prepare and return response data
         response_data = settings_to_return.model_dump(by_alias=True) # Use by_alias for consistency ('theme')
-        response_data['id'] = str(settings_to_return.id)
+        # --- FIX APPLIED HERE ---
+        # Ensure the '_id' key holds the string representation
+        if '_id' in response_data and settings_to_return.id:
+             response_data['_id'] = str(settings_to_return.id)
+        elif settings_to_return.id: # Fallback
+             response_data['_id'] = str(settings_to_return.id)
+        # ------------------------
         return AppearanceSettingsRead(**response_data)
 
     except ValidationError as e: # Catch Pydantic validation errors

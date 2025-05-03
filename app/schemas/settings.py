@@ -1,8 +1,12 @@
 # app/schemas/settings.py
-from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator # Added model_validator
-from typing import Optional, List, Annotated # Added Annotated
+import logging # Import logging
+from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
+from typing import Optional, List, Annotated
 from app.db.models.enums import AsdLevel, DayOfWeek
-from datetime import time 
+# No need to import `time` from datetime if not used directly
+
+# Get a logger instance for potential logging within validators
+logger = logging.getLogger(__name__)
 
 # --- Base Schema ---
 class ParentalSettingsBase(BaseModel):
@@ -14,10 +18,8 @@ class ParentalSettingsBase(BaseModel):
         default=False,
         description="Block content categorized as inappropriate for children."
     )
-    # Using Optional[str] with pattern allows null/empty string/valid hours. Ensure backend logic handles these cases.
-    # Alternatively, use Optional[Annotated[int, Field(ge=0, le=24)]] if only null means "no limit".
     daily_limit_hours: Optional[Annotated[str, Field(pattern=r"^(?:[0-9]|1[0-9]|2[0-4])?$", default=None)]] = Field(
-        default=None, # Explicit default None
+        default=None,
         description="Daily screen time usage limit in hours (0-24, empty/null means no limit)."
     )
     asd_level: Optional[AsdLevel] = Field(
@@ -32,6 +34,7 @@ class ParentalSettingsBase(BaseModel):
         default_factory=list,
         description="List of days when downtime is active (e.g., ['Mon', 'Wed', 'Fri'])."
     )
+    # Default times now represent a valid overnight period with the updated validator
     downtime_start: Annotated[str, Field(pattern=r"^[0-2][0-9]:[0-5][0-9]$")] = Field(
         default="21:00",
         description="Downtime start time in HH:MM (24-hour) format."
@@ -53,36 +56,42 @@ class ParentalSettingsBase(BaseModel):
         description="User preference regarding anonymous data sharing for improvement."
     )
 
-
     # --- Field Validators ---
     @field_validator('downtime_days', mode='before')
     @classmethod
     def sort_and_validate_days(cls, v):
         if not isinstance(v, list):
-            # Allow Pydantic to handle non-list types later if needed, or raise error here
-             return v # Or raise TypeError('downtime_days must be a list')
+             return v # Allow Pydantic's deeper validation or raise TypeError here if strict list required
         try:
-            # Define the canonical order
             day_order: List[DayOfWeek] = [DayOfWeek.MON, DayOfWeek.TUE, DayOfWeek.WED, DayOfWeek.THU, DayOfWeek.FRI, DayOfWeek.SAT, DayOfWeek.SUN]
-            # Validate and convert to Enum members, remove duplicates
-            valid_days_enum = {DayOfWeek(item) for item in v if item in DayOfWeek.__members__.values()}
-            # Sort the valid Enum members based on the canonical order
+            # Use values() for checking membership in Enum values directly
+            valid_days_enum = {DayOfWeek(item) for item in v if isinstance(item, str) and item in DayOfWeek._value2member_map_}
             return sorted(list(valid_days_enum), key=lambda day: day_order.index(day))
         except ValueError as e:
             # Catch specific error if an invalid day string is provided
             raise ValueError(f"Invalid day found in downtime_days: {v}. Must be one of {', '.join(d.value for d in DayOfWeek)}") from e
+        except Exception as e: # Catch unexpected errors during processing
+            logger.error(f"Unexpected error sorting/validating downtime_days '{v}': {e}")
+            raise ValueError(f"Failed to process downtime_days: {v}")
+
 
     # --- Model Validators ---
-    @model_validator(mode='after') # Use 'after' to access validated fields
+    @model_validator(mode='after')
     def check_downtime_days_if_enabled(self):
-        # Access fields via self after initial validation
         if self.downtime_enabled and not self.downtime_days:
-            raise ValueError('If downtime is enabled, at least one active day must be selected.')
+            # Raise error with field name for better frontend feedback
+            raise ValueError({'downtime_days': 'If downtime is enabled, at least one active day must be selected.'})
         return self
 
+    # --- REVISED MODEL VALIDATOR ---
     @model_validator(mode='after')
-    def check_downtime_hours_order(self):
-        # Check if both times are provided (already validated for format by Field)
+    def check_downtime_hours_order_and_allow_overnight(self):
+        """
+        Validates the downtime start and end times.
+        Allows overnight periods (e.g., 21:00 to 07:00).
+        Raises an error only if the start and end times are exactly the same.
+        """
+        # Only run validation if both times are present (format already checked by Field)
         if self.downtime_start and self.downtime_end:
             try:
                 start_h, start_m = map(int, self.downtime_start.split(':'))
@@ -90,25 +99,30 @@ class ParentalSettingsBase(BaseModel):
                 start_total_minutes = start_h * 60 + start_m
                 end_total_minutes = end_h * 60 + end_m
 
-                # **REFINED LOGIC**: Example: Ensure start time is strictly before end time.
-                # Assumes downtime does NOT span across midnight (e.g., 22:00 to 06:00 is invalid here).
-                # Adjust this logic if overnight downtime IS allowed.
-                if start_total_minutes >= end_total_minutes:
-                    raise ValueError('Downtime start time must be strictly before the end time (HH:MM). Overnight periods spanning midnight require different handling.')
+                # Check for the only strictly invalid case: start time is identical to end time.
+                # If start > end, we now interpret it as a valid overnight period.
+                if start_total_minutes == end_total_minutes:
+                    # Raise error indicating the specific problem and potentially targeting fields
+                    error_detail = f"Downtime start time ({self.downtime_start}) cannot be the same as the end time ({self.downtime_end})."
+                    # Pydantic v2 allows raising ValueError directly, or you can structure for FastAPI detail
+                    raise ValueError(error_detail)
+                    # Alternatively, for more structured FastAPI errors:
+                    # raise ValueError({'downtime_start': error_detail, 'downtime_end': error_detail})
+
 
             except ValueError as e:
-                # Re-raise specific validation error, avoid catching generic ValueErrors from elsewhere
-                if 'time format' not in str(e) and 'must be strictly before' not in str(e):
-                     # This should ideally not be reached if Field pattern works, but as a fallback:
-                     raise ValueError(f'Invalid time format encountered: {e}')
+                # Re-raise our specific validation error directly
+                if "cannot be the same as the end time" in str(e):
+                     raise e
+                # Otherwise, it might be an unexpected format error from map/int (though Field pattern should catch it)
                 else:
-                    raise e # Raise the specific format or comparison error
-            except Exception as e: # Catch any unexpected errors during validation
-                # Log this unexpected error
-                print(f"Unexpected error during downtime validation: {e}")
+                     logger.warning(f"Unexpected ValueError during downtime time parsing (Field pattern might have failed?): {self.downtime_start}, {self.downtime_end} -> {e}")
+                     raise ValueError(f"Invalid time format encountered for start/end time: {e}") from e
+            except Exception as e:
+                # Catch any other unexpected errors during validation
+                logger.exception("Unexpected error during downtime time validation:") # Use exception logger
                 raise ValueError("An unexpected error occurred during downtime time validation.")
-        return self
-
+        return self # Always return self for model validators
 
     class Config:
         from_attributes = True
@@ -121,11 +135,18 @@ class ParentalSettingsBase(BaseModel):
                 "asd_level": "medium",
                 "downtime_enabled": True,
                 "downtime_days": ["Mon", "Tue", "Wed", "Thu", "Fri"],
-                "downtime_start": "20:30",
-                "downtime_end": "22:00", # Changed example to be valid with new validator
+                "downtime_start": "21:00", # Default overnight start
+                "downtime_end": "07:00",   # Default overnight end (Now valid)
                 "require_passcode": True,
                 "notify_emails": ["parent1@example.com", "guardian@example.com"],
                 "data_sharing_preference": False,
+            },
+             "example_same_day": { # Add another example if useful
+                "downtime_enabled": True,
+                "downtime_days": ["Sat", "Sun"],
+                "downtime_start": "10:00",
+                "downtime_end": "18:00",
+                # ... other fields
             }
         }
 
@@ -137,7 +158,7 @@ class ParentalSettingsRead(ParentalSettingsBase):
     class Config:
         from_attributes = True
         populate_by_name = True
-        json_schema_extra = { # Example specific to Read
+        json_schema_extra = { # Example specific to Read (using valid overnight)
             "example": {
                 "id": "6811a5b...",
                 "block_violence": False,
@@ -146,8 +167,8 @@ class ParentalSettingsRead(ParentalSettingsBase):
                 "asd_level": "medium",
                 "downtime_enabled": True,
                 "downtime_days": ["Mon", "Tue", "Wed", "Thu", "Fri"],
-                "downtime_start": "20:30",
-                "downtime_end": "22:00", # Changed example
+                "downtime_start": "21:00",
+                "downtime_end": "07:00", # Now valid example
                 "require_passcode": True,
                 "notify_emails": ["parent1@example.com", "guardian@example.com"],
                 "data_sharing_preference": False,
@@ -156,20 +177,20 @@ class ParentalSettingsRead(ParentalSettingsBase):
 
 
 # --- Schema for Updating Data ---
-# **REFINED**: No need to redeclare fields as Optional = None here.
-# Pydantic handles making inherited fields optional for input automatically.
 class ParentalSettingsUpdate(ParentalSettingsBase):
-    pass # Inherits all fields from Base as optional for input
+    # Inherits all fields from Base as optional for input AND inherits the validators
+    pass
 
     class Config:
-        # Keep configuration like examples if needed
-        from_attributes = True # Ensure config is inherited or re-declared if needed
+        from_attributes = True
         populate_by_name = True
         json_schema_extra = {
-            "example": {
-                "downtime_enabled": False, # Example: disabling downtime
-                "daily_limit_hours": "3",   # Example: updating limit
-                "notify_emails": ["parent1@example.com"], # Example: replacing list
-                "downtime_days": ["Sat", "Sun"] # Example: changing days
+            "example": { # Example of updating to a same-day downtime
+                "downtime_enabled": True,
+                "downtime_start": "19:00",
+                "downtime_end": "21:00",
+                "daily_limit_hours": "3",
+                "notify_emails": ["parent1@example.com"],
+                "downtime_days": ["Sat", "Sun"]
             }
         }

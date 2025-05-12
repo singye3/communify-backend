@@ -1,6 +1,6 @@
 # app/api/v1/endpoints/settings.py
 import logging
-from typing import Dict, Any # Added Dict, Any
+from typing import Dict, Any, Optional # Added Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import ValidationError # For specific Pydantic error handling
 

@@ -1,10 +1,10 @@
+# app/core/security.py
+
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union, Optional
-
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,6 @@ else:
         "Application JWT functionality will be disabled. Please set a strong SECRET_KEY environment variable."
     )
 
-
 def create_access_token(
     subject: Union[str, Any], expires_delta: Optional[timedelta] = None
 ) -> str:
@@ -83,7 +82,6 @@ def create_access_token(
             "Could not create access token due to an encoding error."
         ) from e
 
-
 def decode_access_token(token: str) -> Optional[str]:
     if not SECRET_KEY_RUNTIME:
         logger.error(
@@ -104,7 +102,6 @@ def decode_access_token(token: str) -> Optional[str]:
     except Exception as e:
         logger.error("Unexpected error during token decoding: %s", e, exc_info=True)
         return None
-
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not pwd_context:
@@ -130,7 +127,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         )
         return False
 
-
 def get_password_hash(password: str) -> str:
     if not pwd_context:
         logger.critical(
@@ -147,7 +143,6 @@ def get_password_hash(password: str) -> str:
     except Exception as e:
         logger.critical("Failed to hash user password: %s", e, exc_info=True)
         raise RuntimeError("Could not hash password due to an internal error.") from e
-
 
 def verify_parental_passcode(plain_passcode: str, hashed_passcode: str) -> bool:
     if not pwd_context:
@@ -166,7 +161,7 @@ def verify_parental_passcode(plain_passcode: str, hashed_passcode: str) -> bool:
         return is_valid
     except ValueError as e:
         logger.error(
-            "Parental passcode verification error (likely malformed hash): %s", e
+            "Parental passcode verification error (likely malformed admits): %s", e
         )
         return False
     except Exception as e:
@@ -176,7 +171,6 @@ def verify_parental_passcode(plain_passcode: str, hashed_passcode: str) -> bool:
             exc_info=True,
         )
         return False
-
 
 def get_parental_passcode_hash(passcode: str) -> str:
     if not pwd_context:

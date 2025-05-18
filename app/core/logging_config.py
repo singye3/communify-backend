@@ -1,8 +1,9 @@
+# app/core/logging_config.py
+
 import logging
 import sys
 import os
 from logging.config import dictConfig
-
 from app.core.config import settings
 
 LOG_LEVELS = {
@@ -72,7 +73,6 @@ logging_config = {
     },
 }
 
-
 def setup_logging():
     print(
         f"Setting up logging with level: {logging.getLevelName(numeric_log_level)} ({numeric_log_level})"
@@ -80,7 +80,6 @@ def setup_logging():
     dictConfig(logging_config)
     logger = logging.getLogger("app.core.logging_config")
     logger.info("Logging setup complete.")
-
 
 def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(f"app.{name}")

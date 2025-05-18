@@ -1,11 +1,11 @@
 # app/db/models/user.py
+
 import re
 from typing import Optional, List, Annotated
 from datetime import datetime, timezone
 from beanie import Document, Indexed
 from pydantic import Field, EmailStr, field_validator, model_validator
 from .enums import UserType, UserStatus, Gender
-
 
 class User(Document):
     email: Annotated[EmailStr, Indexed(unique=True)] = Field()
@@ -25,8 +25,8 @@ class User(Document):
     class Settings:
         name = "users"
         indexes = [
-            ("is_active", 1),
-            ("user_type", 1),
+            [("is_active", 1)],
+            [("user_type", 1)],
         ]
 
     async def before_save(self):

@@ -1,4 +1,5 @@
 # app/schemas/appearance.py
+
 from pydantic import (
     BaseModel,
     Field,
@@ -6,13 +7,14 @@ from pydantic import (
     field_validator,
     conint,
 )
+
 from typing import Optional, List, Annotated, Literal
+
 from app.db.models.enums import (
     GridLayoutTypeEnum,
     TextSizeTypeEnum,
     ContrastModeTypeEnum,
 )
-
 
 class AppearanceSettingsBase(BaseModel):
     symbol_grid_layout: Optional[GridLayoutTypeEnum] = Field(
@@ -78,12 +80,11 @@ class AppearanceSettingsBase(BaseModel):
             }
         }
 
-
 class AppearanceSettingsRead(AppearanceSettingsBase):
     id: str = Field(
         ..., alias="_id", description="Unique identifier for the settings document."
     )
-
+    
     class Config:
         from_attributes = True
         populate_by_name = True
@@ -104,7 +105,6 @@ class AppearanceSettingsRead(AppearanceSettingsBase):
                 "dark_mode_enabled": False,
             }
         }
-
 
 class AppearanceSettingsUpdate(AppearanceSettingsBase):
     class Config:

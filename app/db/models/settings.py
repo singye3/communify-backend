@@ -1,6 +1,7 @@
 # app/db/models/settings.py
+
 import logging
-from typing import Optional, List, Annotated, Any, Dict
+from typing import Optional, List, Annotated, Any
 from datetime import datetime
 from beanie import Document, Link, Indexed
 from pydantic import Field, EmailStr, field_validator, model_validator
@@ -8,10 +9,8 @@ from .enums import AsdLevel, DayOfWeek
 
 logger = logging.getLogger(__name__)
 
-
 class ParentalSettings(Document):
     user: Annotated[Link["User"], Indexed(unique=True)]
-
     block_violence: bool = Field(
         default=False, description="Block content categorized as violent."
     )
@@ -73,7 +72,6 @@ class ParentalSettings(Document):
     def sort_and_validate_downtime_days(cls, v: Any) -> List[DayOfWeek]:
         if not isinstance(v, list):
             raise ValueError("downtime_days must be a list.")
-
         day_order_map: Dict[DayOfWeek, int] = {
             DayOfWeek.MON: 0,
             DayOfWeek.TUE: 1,
@@ -83,7 +81,6 @@ class ParentalSettings(Document):
             DayOfWeek.SAT: 5,
             DayOfWeek.SUN: 6,
         }
-
         valid_days_enum_set = set()
         invalid_items = []
         for item in v:
@@ -92,13 +89,11 @@ class ParentalSettings(Document):
                 valid_days_enum_set.add(day_enum_member)
             except ValueError:
                 invalid_items.append(item)
-
         if invalid_items:
             allowed_values = ", ".join(d.value for d in DayOfWeek)
             raise ValueError(
                 f"Invalid day(s) in downtime_days: {invalid_items}. Allowed: {allowed_values}."
             )
-
         return sorted(
             list(valid_days_enum_set), key=lambda day_enum: day_order_map[day_enum]
         )
@@ -108,19 +103,16 @@ class ParentalSettings(Document):
     def validate_optional_hour_string(cls, v: Any) -> Optional[str]:
         if v is None or v == "":
             return None
-
         if not isinstance(v, str):
             if isinstance(v, (int, float)) and 0 <= v <= 24:
                 return str(int(v))
             raise ValueError(
                 "Daily limit hours must be a string representing a number."
             )
-
         if not v.isdigit():
             raise ValueError(
                 "Limit must be a whole number string (e.g., '2', '10') if provided."
             )
-
         try:
             hour = int(v)
             if not (0 <= hour <= 24):
@@ -147,7 +139,5 @@ class ParentalSettings(Document):
             )
         return self
 
-
 from .user import User
-
 ParentalSettings.model_rebuild(force=True)

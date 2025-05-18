@@ -1,18 +1,12 @@
 # app/db/models/user_symbols.py
+
 from beanie import Document, Link, Indexed
 from typing import Optional
 from pydantic import Field
 import pymongo
-
 from .user import User
 
-
 class UserCategorySymbol(Document):
-    """
-    Represents a symbol keyword added by a specific user to a specific category.
-    This allows users to customize or extend both standard and their own categories.
-    """
-
     keyword: Indexed(str, index_type=pymongo.TEXT) = Field(
         ..., min_length=1, description="The symbol keyword added by the user."
     )

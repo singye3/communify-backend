@@ -1,9 +1,8 @@
 # app/schemas/admin.py
+
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
-
 from app.db.models.enums import UserType, UserStatus, Gender
-
 
 class AdminUserCreate(BaseModel):
     email: EmailStr = Field(..., examples=["new.admin@example.com"])
@@ -49,10 +48,11 @@ class AdminUserCreate(BaseModel):
             }
         }
 
-
 class AdminUserUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    phone_number: Optional[str] = Field(default=None, min_length=5, max_length=25)
+    phone_number: Optional[str] = Field(
+        default=None, min_length=5, max_length=25
+    )
     user_type: Optional[UserType] = None
     status: Optional[UserStatus] = None
     is_active: Optional[bool] = None
